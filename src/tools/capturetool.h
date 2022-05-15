@@ -75,7 +75,9 @@ public:
         // increase tool size for all tools
         REQ_INCREASE_TOOL_SIZE,
         // decrease tool size for all tools
-        REQ_DECREASE_TOOL_SIZE
+        REQ_DECREASE_TOOL_SIZE,
+        // decrease tool size for pin
+        REQ_PIN_EDITABLE
     };
 
     explicit CaptureTool(QObject* parent = nullptr)

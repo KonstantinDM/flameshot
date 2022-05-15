@@ -214,4 +214,11 @@ private:
     // For start moving after more than X offset
     QPoint m_startMovePos;
     bool m_startMove;
+
+    // Pin mode
+    bool m_pinModeEnabled;
+    bool m_pinDrag;
+    QRect m_pinRect;
+    QPoint m_dragStart;
+    qreal m_offsetX{}, m_offsetY{};
 };
