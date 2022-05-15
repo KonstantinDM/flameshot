@@ -71,6 +71,8 @@ CaptureWidget::CaptureWidget(const CaptureRequest& req,
   , m_existingObjectIsChanged(false)
   , m_startMove(false)
   , m_toolSizeByKeyboard(0)
+  , m_pinModeEnabled(false)
+  , m_pinDrag(false)
 {
     m_undoStack.setUndoLimit(ConfigHandler().undoLimit());
 
@@ -485,7 +487,11 @@ void CaptureWidget::paintEvent(QPaintEvent* paintEvent)
 {
     Q_UNUSED(paintEvent)
     QPainter painter(this);
-    painter.drawPixmap(0, 0, m_context.screenshot);
+    if (m_pinModeEnabled) {
+        painter.drawPixmap(-m_pinRect.x(), -m_pinRect.y(), m_context.screenshot);
+    } else {
+        painter.drawPixmap(0, 0, m_context.screenshot);
+    }
 
     if (m_activeTool && m_mouseIsClicked) {
         painter.save();
@@ -610,6 +616,13 @@ int CaptureWidget::selectToolItemAtPos(const QPoint& pos)
 
 void CaptureWidget::mousePressEvent(QMouseEvent* e)
 {
+    if (m_pinModeEnabled) {
+        m_dragStart = e->globalPos();
+        m_offsetX = e->localPos().x() / width();
+        m_offsetY = e->localPos().y() / height();
+        m_pinDrag = true;
+        return;
+    }
     activateWindow();
     m_startMove = false;
     m_startMovePos = QPoint();
@@ -658,6 +671,9 @@ void CaptureWidget::mousePressEvent(QMouseEvent* e)
 
 void CaptureWidget::mouseDoubleClickEvent(QMouseEvent* event)
 {
+    if(m_pinModeEnabled) {
+        return;
+    }
     int activeLayerIndex = m_panel->activeLayerIndex();
     if (activeLayerIndex != -1) {
         // Start object editing
@@ -689,6 +705,18 @@ void CaptureWidget::mouseDoubleClickEvent(QMouseEvent* event)
 
 void CaptureWidget::mouseMoveEvent(QMouseEvent* e)
 {
+    if (m_pinModeEnabled) {
+        if (!m_pinDrag) {
+            return;
+        }
+        const QPoint delta = e->globalPos() - m_dragStart;
+        const int offsetW = width() * m_offsetX;
+        const int offsetH = height() * m_offsetY;
+        move(m_dragStart.x() + delta.x() - offsetW,
+            m_dragStart.y() + delta.y() - offsetH);
+        return;
+    }
+
     if (m_magnifier) {
         if (!m_activeButton) {
             m_magnifier->show();
@@ -763,6 +791,11 @@ void CaptureWidget::mouseMoveEvent(QMouseEvent* e)
 
 void CaptureWidget::mouseReleaseEvent(QMouseEvent* e)
 {
+    if (m_pinModeEnabled) {
+        m_pinDrag = false;
+        m_buttonHandler->hide();
+        return;
+    }
     if (e->button() == Qt::LeftButton && m_colorPicker->isVisible()) {
         // Color picker
         if (m_colorPicker->isVisible() && m_panel->activeLayerIndex() >= 0 &&
@@ -837,7 +870,7 @@ void CaptureWidget::keyPressEvent(QKeyEvent* e)
         m_toolSizeByKeyboard = 0;
     }
 
-    if (!m_selection->isVisible()) {
+    if (!m_pinModeEnabled && !m_selection->isVisible()) {
         return;
     } else if (e->key() == Qt::Key_Control) {
         m_adjustmentButtonPressed = true;
@@ -894,6 +927,9 @@ void CaptureWidget::wheelEvent(QWheelEvent* e)
 
 void CaptureWidget::resizeEvent(QResizeEvent* e)
 {
+    if (m_pinModeEnabled) {
+        return;
+    }
     QWidget::resizeEvent(e);
     m_context.widgetOffset = mapToGlobal(QPoint(0, 0));
     if (!m_context.fullscreen) {
@@ -904,6 +940,9 @@ void CaptureWidget::resizeEvent(QResizeEvent* e)
 
 void CaptureWidget::moveEvent(QMoveEvent* e)
 {
+    if (m_pinModeEnabled) {
+        return;
+    }
     QWidget::moveEvent(e);
     m_context.widgetOffset = mapToGlobal(QPoint(0, 0));
 }
@@ -1174,6 +1213,15 @@ void CaptureWidget::handleToolSignal(CaptureTool::Request r)
         case CaptureTool::REQ_CAPTURE_DONE_OK:
             m_captureDone = true;
             break;
+        case CaptureTool::REQ_PIN_EDITABLE:
+            {
+                setGeometry(m_selection->geometry());
+                m_pinRect = m_selection->geometry();
+                m_pinModeEnabled = true;
+                setCursor(Qt::ArrowCursor);
+                delete m_selection;
+            }
+            break;
         case CaptureTool::REQ_CLEAR_SELECTION:
             if (m_panel->activeLayerIndex() >= 0) {
                 m_panel->setActiveLayer(-1);
@@ -1443,6 +1491,10 @@ void CaptureWidget::updateSizeIndicator()
 
 void CaptureWidget::updateCursor()
 {
+    if (m_pinModeEnabled) {
+        setCursor(Qt::ArrowCursor);
+        return;
+    }
     if (m_colorPicker && m_colorPicker->isVisible()) {
         setCursor(Qt::ArrowCursor);
     } else if (m_activeButton != nullptr &&
@@ -1460,6 +1512,9 @@ void CaptureWidget::updateCursor()
 
 void CaptureWidget::updateSelectionState()
 {
+    if (m_pinModeEnabled) {
+        return;
+    }
     auto toolType = activeButtonToolType();
     if (toolType == CaptureTool::TYPE_MOVESELECTION) {
         m_selection->setIdleCentralCursor(Qt::OpenHandCursor);
@@ -1743,6 +1798,9 @@ void CaptureWidget::drawErrorMessage(const QString& msg, QPainter* painter)
 
 void CaptureWidget::drawInactiveRegion(QPainter* painter)
 {
+    if (m_pinModeEnabled) {
+        return;
+    }
     QColor overlayColor(0, 0, 0, m_opacity);
     painter->setBrush(overlayColor);
     QRect r;
