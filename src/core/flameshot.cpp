@@ -38,7 +38,6 @@
 #endif
 
 Flameshot::Flameshot()
-  : m_captureWindow(nullptr)
 #if defined(Q_OS_MACOS)
   , m_HotkeyScreenshotCapture(nullptr)
   , m_HotkeyScreenshotHistory(nullptr)

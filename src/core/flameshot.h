@@ -63,7 +63,6 @@ private:
     // class members
     static Origin m_origin;
 
-    QPointer<CaptureWidget> m_captureWindow;
     QPointer<InfoWindow> m_infoWindow;
     QPointer<CaptureLauncher> m_launcherWindow;
     QPointer<ConfigWindow> m_configWindow;
