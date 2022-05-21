@@ -617,10 +617,13 @@ int CaptureWidget::selectToolItemAtPos(const QPoint& pos)
 void CaptureWidget::mousePressEvent(QMouseEvent* e)
 {
     if (m_pinModeEnabled) {
+        if (e->button() == Qt::RightButton) {
+            return;
+        }
         m_dragStart = e->globalPos();
         m_offsetX = e->localPos().x() / width();
         m_offsetY = e->localPos().y() / height();
-        m_pinDrag = true;
+        m_pinDrag = true;        
         return;
     }
     activateWindow();
@@ -794,6 +797,13 @@ void CaptureWidget::mouseReleaseEvent(QMouseEvent* e)
     if (m_pinModeEnabled) {
         m_pinDrag = false;
         m_buttonHandler->hide();
+        if (e->button() == Qt::RightButton) {
+            m_pinModeEnabled = false;
+            setGeometry(m_pinReturnGeometry);
+            m_context.request.setInitialSelection(m_pinRect);
+            initSelection();
+            return;
+        }
         return;
     }
     if (e->button() == Qt::LeftButton && m_colorPicker->isVisible()) {
@@ -1215,6 +1225,7 @@ void CaptureWidget::handleToolSignal(CaptureTool::Request r)
             break;
         case CaptureTool::REQ_PIN_EDITABLE:
             {
+                m_pinReturnGeometry = geometry();
                 setGeometry(m_selection->geometry());
                 m_pinRect = m_selection->geometry();
                 m_pinModeEnabled = true;

@@ -205,6 +205,7 @@ private:
     bool m_pinModeEnabled;
     bool m_pinDrag;
     QRect m_pinRect;
+    QRect m_pinReturnGeometry;
     QPoint m_dragStart;
     qreal m_offsetX{}, m_offsetY{};
 };
