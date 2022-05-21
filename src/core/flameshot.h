@@ -66,7 +66,6 @@ private:
     static Origin m_origin;
     bool m_haveExternalWidget;
 
-    QPointer<CaptureWidget> m_captureWindow;
     QPointer<InfoWindow> m_infoWindow;
     QPointer<CaptureLauncher> m_launcherWindow;
     QPointer<ConfigWindow> m_configWindow;

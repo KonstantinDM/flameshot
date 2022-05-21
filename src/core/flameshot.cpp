@@ -36,8 +36,7 @@
 #endif
 
 Flameshot::Flameshot()
-  : m_captureWindow(nullptr)
-  , m_haveExternalWidget(false)
+  : m_haveExternalWidget(false)
 #if defined(Q_OS_MACOS)
   , m_HotkeyScreenshotCapture(nullptr)
   , m_HotkeyScreenshotHistory(nullptr)
