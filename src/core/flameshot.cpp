@@ -81,56 +81,9 @@ CaptureWidget* Flameshot::gui(const CaptureRequest& req)
         return nullptr;
     }
 
-#if defined(Q_OS_MACOS)
-    // This is required on MacOS because of Mission Control. If you'll switch to
-    // another Desktop you cannot take a new screenshot from the tray, you have
-    // to switch back to the Flameshot Desktop manually. It is not obvious and a
-    // large number of users are confused and report a bug.
-    if (m_captureWindow != nullptr) {
-        m_captureWindow->close();
-        delete m_captureWindow;
-        m_captureWindow = nullptr;
-    }
-#endif
-
-    if (nullptr == m_captureWindow) {
-        // TODO is this unnecessary now?
-        int timeout = 5000; // 5 seconds
-        const int delay = 100;
-        QWidget* modalWidget = nullptr;
-        for (; timeout >= 0; timeout -= delay) {
-            modalWidget = qApp->activeModalWidget();
-            if (nullptr == modalWidget) {
-                break;
-            }
-            modalWidget->close();
-            modalWidget->deleteLater();
-            QThread::msleep(delay);
-        }
-        if (0 == timeout) {
-            QMessageBox::warning(
-              nullptr, tr("Error"), tr("Unable to close active modal widgets"));
-            return nullptr;
-        }
-
-        m_captureWindow = new CaptureWidget(req);
-
-#ifdef Q_OS_WIN
-        m_captureWindow->show();
-#elif defined(Q_OS_MACOS)
-        // In "Emulate fullscreen mode"
-        m_captureWindow->showFullScreen();
-        m_captureWindow->activateWindow();
-        m_captureWindow->raise();
-#else
-        m_captureWindow->showFullScreen();
-//        m_captureWindow->show(); // For CaptureWidget Debugging under Linux
-#endif
-        return m_captureWindow;
-    } else {
-        emit captureFailed();
-        return nullptr;
-    }
+    auto newWindow = new CaptureWidget(req);
+    newWindow->show();
+    return newWindow;
 }
 
 void Flameshot::screen(CaptureRequest req, const int screenNumber)

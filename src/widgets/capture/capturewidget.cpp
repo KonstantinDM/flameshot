@@ -727,7 +727,7 @@ void CaptureWidget::mousePressEvent(QMouseEvent* e)
         m_dragStart = e->globalPos();
         m_offsetX = e->localPos().x() / width();
         m_offsetY = e->localPos().y() / height();
-        m_pinDrag = true;        
+        m_pinDrag = true;
         return;
     }
     activateWindow();
