@@ -30,10 +30,16 @@ signals:
     void colorChanged(const QColor& color);
     void toolSizeChanged(int size);
     void togglePanel();
+    void messasgeShowed(const QString& msg);
+    void messasgeHided();
+    void checkMessageVisiblityInited();
 
 public slots:
     void onToolSizeChanged(int tool);
     void onColorChanged(const QColor& color);
+    void showMessage(const QString& msg);
+    void hideMessage();
+    void checkMessageVisiblity();
 
 private slots:
     void startColorGrab();

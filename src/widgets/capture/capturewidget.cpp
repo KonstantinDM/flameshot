@@ -23,7 +23,6 @@
 #include "src/widgets/capture/hovereventfilter.h"
 #include "src/widgets/capture/modificationcommand.h"
 #include "src/widgets/capture/notifierbox.h"
-#include "src/widgets/capture/overlaymessage.h"
 #include "src/widgets/orientablepushbutton.h"
 #include "src/widgets/panel/sidepanelwidget.h"
 #include "src/widgets/panel/utilitypanel.h"
@@ -73,6 +72,7 @@ CaptureWidget::CaptureWidget(const CaptureRequest& req,
   , m_toolSizeByKeyboard(0)
   , m_pinModeEnabled(false)
   , m_pinDrag(false)
+  , m_overlayMessage(this, QGuiAppCurrentScreen().currentScreen()->geometry())
 {
     m_undoStack.setUndoLimit(ConfigHandler().undoLimit());
 
@@ -110,9 +110,7 @@ CaptureWidget::CaptureWidget(const CaptureRequest& req,
         m_context.origScreenshot = m_context.screenshot;
 
 #if defined(Q_OS_WIN)
-        setWindowFlags(Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint |
-                       Qt::SubWindow // Hides the taskbar icon
-        );
+        setWindowFlags(Qt::FramelessWindowHint);
 
         for (QScreen* const screen : QGuiApplication::screens()) {
             QPoint topLeftScreen = screen->geometry().topLeft();
@@ -227,21 +225,18 @@ CaptureWidget::CaptureWidget(const CaptureRequest& req,
     connect(ConfigHandler::getInstance(), &ConfigHandler::error, this, [=]() {
         m_configError = true;
         m_configErrorResolved = false;
-        OverlayMessage::instance()->update();
+        m_overlayMessage.update();
     });
     connect(
       ConfigHandler::getInstance(), &ConfigHandler::errorResolved, this, [=]() {
           m_configError = false;
           m_configErrorResolved = true;
-          OverlayMessage::instance()->update();
+          m_overlayMessage.update();
       });
-
-    OverlayMessage::init(this,
-                         QGuiAppCurrentScreen().currentScreen()->geometry());
 
     if (m_config.showHelp()) {
         initHelpMessage();
-        OverlayMessage::push(m_helpMessage);
+        m_overlayMessage.push(m_helpMessage);
     }
 
     updateCursor();
@@ -445,6 +440,10 @@ void CaptureWidget::deleteToolWidgetOrClose()
         m_colorPicker->hide();
     } else {
         // close CaptureWidget
+        if (m_selection) {
+            delete m_selection;
+            m_selection = nullptr;
+        }
         close();
     }
 }
@@ -489,6 +488,9 @@ void CaptureWidget::paintEvent(QPaintEvent* paintEvent)
     QPainter painter(this);
     if (m_pinModeEnabled) {
         painter.drawPixmap(-m_pinRect.x(), -m_pinRect.y(), m_context.screenshot);
+        painter.setPen(Qt::blue);
+        painter.drawRect(0,0,rect().width()-1,rect().height()-1);
+        return;
     } else {
         painter.drawPixmap(0, 0, m_context.screenshot);
     }
@@ -706,6 +708,11 @@ void CaptureWidget::mouseDoubleClickEvent(QMouseEvent* event)
     }
 }
 
+void CaptureWidget::checkMessageVisiblity()
+{
+    m_overlayMessage.setVisibility(!m_overlayMessage.geometry().contains(QCursor::pos(QGuiAppCurrentScreen().currentScreen())));
+}
+
 void CaptureWidget::mouseMoveEvent(QMouseEvent* e)
 {
     if (m_pinModeEnabled) {
@@ -798,10 +805,13 @@ void CaptureWidget::mouseReleaseEvent(QMouseEvent* e)
         m_pinDrag = false;
         m_buttonHandler->hide();
         if (e->button() == Qt::RightButton) {
-            m_pinModeEnabled = false;
             setGeometry(m_pinReturnGeometry);
             m_context.request.setInitialSelection(m_pinRect);
             initSelection();
+            m_pinModeEnabled = false;
+            if (m_toolButton) {
+                m_toolButton->show();
+            }
             return;
         }
         return;
@@ -999,25 +1009,25 @@ void CaptureWidget::initPanel()
     }
 
     if (ConfigHandler().showSidePanelButton()) {
-        auto* panelToggleButton =
+        m_toolButton =
           new OrientablePushButton(tr("Tool Settings"), this);
-        makeChild(panelToggleButton);
-        panelToggleButton->setColor(m_uiColor);
-        panelToggleButton->setOrientation(
+        makeChild(m_toolButton);
+        m_toolButton->setColor(m_uiColor);
+        m_toolButton->setOrientation(
           OrientablePushButton::VerticalBottomToTop);
 #if defined(Q_OS_MACOS)
-        panelToggleButton->move(
+        m_toolButton->move(
           0,
           static_cast<int>(panelRect.height() / 2) -
-            static_cast<int>(panelToggleButton->width() / 2));
+            static_cast<int>(m_toolButton->width() / 2));
 #else
-        panelToggleButton->move(panelRect.x(),
+        m_toolButton->move(panelRect.x(),
                                 panelRect.y() + panelRect.height() / 2 -
-                                  panelToggleButton->width() / 2);
+                                  m_toolButton->width() / 2);
 #endif
-        panelToggleButton->setCursor(Qt::ArrowCursor);
-        (new DraggableWidgetMaker(this))->makeDraggable(panelToggleButton);
-        connect(panelToggleButton,
+        m_toolButton->setCursor(Qt::ArrowCursor);
+        (new DraggableWidgetMaker(this))->makeDraggable(m_toolButton);
+        connect(m_toolButton,
                 &QPushButton::clicked,
                 this,
                 &CaptureWidget::togglePanel);
@@ -1070,6 +1080,19 @@ void CaptureWidget::initPanel()
             &SidePanelWidget::togglePanel,
             m_panel,
             &UtilityPanel::toggle);
+    connect(m_sidePanel,
+            &SidePanelWidget::messasgeShowed,
+            &m_overlayMessage,
+            &OverlayMessage::showMessage);
+    connect(m_sidePanel,
+            &SidePanelWidget::messasgeHided,
+            &m_overlayMessage,
+            &OverlayMessage::hideMessage);
+    connect(m_sidePanel,
+            &SidePanelWidget::checkMessageVisiblityInited,
+            this,
+            &CaptureWidget::checkMessageVisiblity);
+
     // TODO replace with a CaptureWidget signal
     emit m_sidePanel->colorChanged(m_context.color);
     emit toolSizeChanged(m_context.toolSize);
@@ -1077,6 +1100,14 @@ void CaptureWidget::initPanel()
 
     // Fill undo/redo/history list widget
     m_panel->fillCaptureTools(m_captureToolObjects.captureToolObjects());
+}
+
+void CaptureWidget::showMessage(const QString& msg) {
+    m_overlayMessage.showMessage(msg);
+}
+
+void CaptureWidget::hideMessage() {
+    m_overlayMessage.hideMessage();
 }
 
 void CaptureWidget::showAppUpdateNotification(const QString& appLatestVersion,
@@ -1124,7 +1155,7 @@ void CaptureWidget::initSelection()
         updateSizeIndicator();
         m_buttonHandler->hide();
         updateCursor();
-        OverlayMessage::pop();
+        m_overlayMessage.pop();
     });
     connect(m_selection, &SelectionWidget::geometrySettled, this, [this]() {
         if (m_selection->isVisibleTo(this)) {
@@ -1142,7 +1173,7 @@ void CaptureWidget::initSelection()
     });
     connect(m_selection, &SelectionWidget::visibilityChanged, this, [this]() {
         if (!m_selection->isVisible() && !m_helpMessage.isEmpty()) {
-            OverlayMessage::push(m_helpMessage);
+            m_overlayMessage.push(m_helpMessage);
         }
     });
     if (!initialSelection.isNull()) {
@@ -1231,6 +1262,10 @@ void CaptureWidget::handleToolSignal(CaptureTool::Request r)
                 m_pinModeEnabled = true;
                 setCursor(Qt::ArrowCursor);
                 delete m_selection;
+                m_selection = nullptr;
+                if (m_toolButton) {
+                    m_toolButton->hide();
+                }
             }
             break;
         case CaptureTool::REQ_CLEAR_SELECTION:
@@ -1809,13 +1844,10 @@ void CaptureWidget::drawErrorMessage(const QString& msg, QPainter* painter)
 
 void CaptureWidget::drawInactiveRegion(QPainter* painter)
 {
-    if (m_pinModeEnabled) {
-        return;
-    }
     QColor overlayColor(0, 0, 0, m_opacity);
     painter->setBrush(overlayColor);
     QRect r;
-    if (m_selection->isVisible()) {
+    if (m_selection && m_selection->isVisible()) {
         r = m_selection->geometry().normalized();
     }
     QRegion grey(rect());

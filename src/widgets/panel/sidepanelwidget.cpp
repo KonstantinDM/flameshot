@@ -99,6 +99,19 @@ SidePanelWidget::SidePanelWidget(QPixmap* p, QWidget* parent)
             &color_widgets::ColorWheel::colorSelected,
             this,
             &SidePanelWidget::colorChanged);
+            
+}
+
+void SidePanelWidget::showMessage(const QString& msg) {
+    emit messasgeShowed(msg);
+}
+
+void SidePanelWidget::hideMessage() {
+    emit messasgeHided();
+}
+
+void SidePanelWidget::checkMessageVisiblity() {
+    emit checkMessageVisiblityInited();
 }
 
 void SidePanelWidget::onColorChanged(const QColor& color)
@@ -130,6 +143,18 @@ void SidePanelWidget::startColorGrab()
             &ColorGrabWidget::grabAborted,
             this,
             &SidePanelWidget::onColorGrabAborted);
+    connect(m_colorGrabber,
+            &ColorGrabWidget::messasgeShowed,
+            this,
+            &SidePanelWidget::showMessage);
+    connect(m_colorGrabber,
+            &ColorGrabWidget::messasgeHided,
+            this,
+            &SidePanelWidget::hideMessage);
+    connect(m_colorGrabber,
+            &ColorGrabWidget::checkMessageVisiblityInited,
+            this,
+            &SidePanelWidget::checkMessageVisiblity);
 
     emit togglePanel();
     m_colorGrabber->startGrabbing();
