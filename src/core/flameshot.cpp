@@ -80,8 +80,38 @@ CaptureWidget* Flameshot::gui(const CaptureRequest& req)
         return nullptr;
     }
 
+    // TODO is this unnecessary now?
+    int timeout = 5000; // 5 seconds
+    const int delay = 100;
+    QWidget* modalWidget = nullptr;
+    for (; timeout >= 0; timeout -= delay) {
+        modalWidget = qApp->activeModalWidget();
+        if (nullptr == modalWidget) {
+            break;
+        }
+        modalWidget->close();
+        modalWidget->deleteLater();
+        QThread::msleep(delay);
+    }
+    if (0 == timeout) {
+        QMessageBox::warning(
+            nullptr, tr("Error"), tr("Unable to close active modal widgets"));
+        return nullptr;
+    }
+
     auto newWindow = new CaptureWidget(req);
+
+#ifdef Q_OS_WIN
     newWindow->show();
+#elif defined(Q_OS_MACOS)
+    // In "Emulate fullscreen mode"
+    newWindow->showFullScreen();
+    newWindow->activateWindow();
+    newWindow->raise();
+#else
+    newWindow->showFullScreen();
+//        m_captureWindow->show(); // For CaptureWidget Debugging under Linux
+#endif
     return newWindow;
 }
 
