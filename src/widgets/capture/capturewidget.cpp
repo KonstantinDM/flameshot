@@ -119,7 +119,9 @@ CaptureWidget::CaptureWidget(const CaptureRequest& req,
         m_context.origScreenshot = m_context.screenshot;
 
 #if defined(Q_OS_WIN)
-        setWindowFlags(Qt::FramelessWindowHint);
+        setWindowFlags(Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint |
+                       Qt::SubWindow // Hides the taskbar icon
+        );
 
         for (QScreen* const screen : QGuiApplication::screens()) {
             QPoint topLeftScreen = screen->geometry().topLeft();
@@ -515,7 +517,7 @@ void CaptureWidget::paintEvent(QPaintEvent* paintEvent)
 {
     Q_UNUSED(paintEvent)
     QPainter painter(this);
-    
+
     GeneralConf::xywh_position position =
       static_cast<GeneralConf::xywh_position>(
         ConfigHandler().value("showSelectionGeometry").toInt());
@@ -549,7 +551,7 @@ void CaptureWidget::paintEvent(QPaintEvent* paintEvent)
         const qreal scale = m_context.screenshot.devicePixelRatio();
         QRect xybox;
         QFontMetrics fm = painter.fontMetrics();
-    
+
         QString xy = QString("%1x%2+%3+%4")
                        .arg(static_cast<int>(selection.width() * scale))
                        .arg(static_cast<int>(selection.height() * scale))
