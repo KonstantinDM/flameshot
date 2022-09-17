@@ -539,7 +539,8 @@ void CaptureWidget::paintEvent(QPaintEvent* paintEvent)
     }
     if (m_pinModeEnabled) {
         painter.drawPixmap(-m_pinRect.x(), -m_pinRect.y(), m_context.screenshot);
-        painter.setPen(Qt::blue);
+        ConfigHandler conf;
+        painter.setPen(conf.uiColor());
         painter.drawRect(0,0,rect().width()-1,rect().height()-1);
         return;
     } else {
