@@ -20,6 +20,9 @@ signals:
     void colorUpdated(const QColor& color);
     void colorGrabbed(const QColor& color);
     void grabAborted();
+    void messasgeShowed(const QString& msg);
+    void messasgeHided();
+    void checkMessageVisiblityInited();
 
 private:
     bool eventFilter(QObject* obj, QEvent* event) override;
@@ -40,6 +43,7 @@ private:
     bool m_mousePressReceived;
     bool m_extraZoomActive;
     bool m_magnifierActive;
+    QString m_helpMessage;
 };
 
 #endif // COLORGRABWIDGET_H

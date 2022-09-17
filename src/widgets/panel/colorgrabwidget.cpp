@@ -44,6 +44,11 @@ ColorGrabWidget::ColorGrabWidget(QPixmap* p, QWidget* parent)
     setWindowFlags(Qt::BypassWindowManagerHint | Qt::WindowStaysOnTopHint |
                    Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
     setMouseTracking(true);
+    m_helpMessage = OverlayMessage::compileFromKeyMap(
+        { { "Enter or Left Click", tr("Accept color") },
+        { "Hold Left Click", tr("Precisely select color") },
+        { "Space or Right Click", tr("Toggle magnifier") },
+        { "Esc", tr("Cancel") } });
 }
 
 void ColorGrabWidget::startGrabbing()
@@ -54,11 +59,7 @@ void ColorGrabWidget::startGrabbing()
     // This is undone in the destructor.
     qApp->setOverrideCursor(Qt::CrossCursor);
     qApp->installEventFilter(this);
-    OverlayMessage::pushKeyMap(
-      { { tr("Enter or Left Click"), tr("Accept color") },
-        { tr("Hold Left Click"), tr("Precisely select color") },
-        { tr("Space or Right Click"), tr("Toggle magnifier") },
-        { tr("Esc"), tr("Cancel") } });
+    emit messasgeShowed(m_helpMessage);
 }
 
 QColor ColorGrabWidget::color()
@@ -103,9 +104,7 @@ bool ColorGrabWidget::eventFilter(QObject*, QEvent* event)
         }
 
         // Hide overlay message when cursor is over it
-        OverlayMessage* overlayMsg = OverlayMessage::instance();
-        overlayMsg->setVisibility(
-          !overlayMsg->geometry().contains(cursorPos()));
+        emit checkMessageVisiblityInited();
 
         m_color = getColorAtPoint(cursorPos());
         emit colorUpdated(m_color);
@@ -233,6 +232,6 @@ void ColorGrabWidget::finalize()
 {
     qApp->removeEventFilter(this);
     qApp->restoreOverrideCursor();
-    OverlayMessage::pop();
+    emit messasgeHided();
     close();
 }

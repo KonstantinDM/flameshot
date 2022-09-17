@@ -20,12 +20,12 @@
 #include "src/utils/confighandler.h"
 #include "src/widgets/capture/magnifierwidget.h"
 #include "src/widgets/capture/selectionwidget.h"
+#include "src/widgets/capture/overlaymessage.h"
 #include <QPointer>
 #include <QTimer>
 #include <QUndoStack>
 #include <QWidget>
 
-class QLabel;
 class QPaintEvent;
 class QResizeEvent;
 class QMouseEvent;
@@ -40,6 +40,7 @@ class UpdateNotificationWidget;
 #endif
 class UtilityPanel;
 class SidePanelWidget;
+class OrientablePushButton;
 
 class CaptureWidget : public QWidget
 {
@@ -61,10 +62,15 @@ public:
 public slots:
     bool commitCurrentTool();
     void deleteToolWidgetOrClose();
+    void showMessage(const QString& msg);
+    void hideMessage();
+    void checkMessageVisiblity();
 
 signals:
     void colorChanged(const QColor& c);
     void toolSizeChanged(int size);
+    void messasgeShowed(const QString& msg);
+    void messasgeHided();
 
 private slots:
     void undo();
@@ -222,4 +228,6 @@ private:
     QRect m_pinReturnGeometry;
     QPoint m_dragStart;
     qreal m_offsetX{}, m_offsetY{};
+    OverlayMessage m_overlayMessage;
+    OrientablePushButton* m_toolButton = nullptr;
 };

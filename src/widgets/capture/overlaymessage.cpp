@@ -1,6 +1,7 @@
 #include "overlaymessage.h"
 #include "colorutils.h"
 #include "confighandler.h"
+#include "src/core/qguiappcurrentscreen.h"
 
 #include <QApplication>
 #include <QDebug>
@@ -13,8 +14,6 @@ OverlayMessage::OverlayMessage(QWidget* parent, const QRect& targetArea)
   : QLabel(parent)
   , m_targetArea(targetArea)
 {
-    // NOTE: do not call the static functions from the constructor
-    m_instance = this;
     m_messageStack.push(QString()); // Default message is empty
     setAttribute(Qt::WA_TransparentForMouseEvents);
     setAttribute(Qt::WA_AlwaysStackOnTop);
@@ -35,41 +34,31 @@ OverlayMessage::OverlayMessage(QWidget* parent, const QRect& targetArea)
     QWidget::hide();
 }
 
-void OverlayMessage::init(QWidget* parent, const QRect& targetArea)
-{
-    new OverlayMessage(parent, targetArea);
-}
-
 /**
  * @brief Push a message to the message stack.
  * @param msg Message text formatted as rich text
  */
 void OverlayMessage::push(const QString& msg)
 {
-    m_instance->m_messageStack.push(msg);
-    m_instance->setText(m_instance->m_messageStack.top());
+    m_messageStack.push(msg);
+    setText(m_messageStack.top());
     setVisibility(true);
 }
 
 void OverlayMessage::pop()
 {
-    if (m_instance->m_messageStack.size() > 1) {
-        m_instance->m_messageStack.pop();
+    if (m_messageStack.size() > 1) {
+        m_messageStack.pop();
     }
 
-    m_instance->setText(m_instance->m_messageStack.top());
-    setVisibility(m_instance->m_messageStack.size() > 1);
+    setText(m_messageStack.top());
+    setVisibility(m_messageStack.size() > 1);
 }
 
 void OverlayMessage::setVisibility(bool visible)
 {
-    m_instance->updateGeometry();
-    m_instance->setVisible(visible);
-}
-
-OverlayMessage* OverlayMessage::instance()
-{
-    return m_instance;
+    updateGeometry();
+    setVisible(visible);
 }
 
 void OverlayMessage::pushKeyMap(const QList<QPair<QString, QString>>& map)
@@ -124,4 +113,3 @@ void OverlayMessage::updateGeometry()
     QLabel::updateGeometry();
 }
 
-OverlayMessage* OverlayMessage::m_instance = nullptr;
