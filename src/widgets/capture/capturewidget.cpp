@@ -907,10 +907,10 @@ void CaptureWidget::mouseReleaseEvent(QMouseEvent* e)
         m_pinDrag = false;
         m_buttonHandler->hide();
         if (e->button() == Qt::RightButton) {
+            m_pinModeEnabled = false;
             setGeometry(m_pinReturnGeometry);
             m_context.request.setInitialSelection(m_pinRect);
             initSelection();
-            m_pinModeEnabled = false;
             if (m_toolButton) {
                 m_toolButton->show();
             }
@@ -1659,7 +1659,7 @@ void CaptureWidget::updateCursor()
     } else if (m_activeButton != nullptr &&
                activeButtonToolType() != CaptureTool::TYPE_MOVESELECTION) {
         setCursor(Qt::CrossCursor);
-    } else if (m_selection->getMouseSide(mapFromGlobal(QCursor::pos())) !=
+    } else if (m_selection && m_selection->getMouseSide(mapFromGlobal(QCursor::pos())) !=
                SelectionWidget::NO_SIDE) {
         setCursor(m_selection->cursor());
     } else if (activeButtonToolType() == CaptureTool::TYPE_MOVESELECTION) {
