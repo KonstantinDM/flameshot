@@ -61,6 +61,13 @@ void OverlayMessage::setVisibility(bool visible)
     setVisible(visible);
 }
 
+void OverlayMessage::showMessage(const QString& msg) {
+    push(msg);
+}
+void OverlayMessage::hideMessage() {
+    pop();
+}
+
 void OverlayMessage::pushKeyMap(const QList<QPair<QString, QString>>& map)
 {
     push(compileFromKeyMap(map));

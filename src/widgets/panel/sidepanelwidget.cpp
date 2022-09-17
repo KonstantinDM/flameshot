@@ -99,7 +99,6 @@ SidePanelWidget::SidePanelWidget(QPixmap* p, QWidget* parent)
             &color_widgets::ColorWheel::colorSelected,
             this,
             &SidePanelWidget::colorChanged);
-            
 }
 
 void SidePanelWidget::showMessage(const QString& msg) {

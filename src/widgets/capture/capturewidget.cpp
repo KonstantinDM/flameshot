@@ -517,7 +517,6 @@ void CaptureWidget::paintEvent(QPaintEvent* paintEvent)
 {
     Q_UNUSED(paintEvent)
     QPainter painter(this);
-
     GeneralConf::xywh_position position =
       static_cast<GeneralConf::xywh_position>(
         ConfigHandler().value("showSelectionGeometry").toInt());

@@ -21,12 +21,8 @@ public:
     void push(const QString& msg);
     void pop();
     void setVisibility(bool visible);
-    void showMessage(const QString& msg) {
-        push(msg);
-    }
-    void hideMessage() {
-        pop();
-    }
+    void showMessage(const QString& msg);
+    void hideMessage();
 
     void pushKeyMap(const QList<QPair<QString, QString>>& map);
     static QString compileFromKeyMap(const QList<QPair<QString, QString>>& map);
