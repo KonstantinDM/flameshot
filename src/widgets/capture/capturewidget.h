@@ -93,6 +93,7 @@ private slots:
     void onMoveCaptureToolDown(int captureToolIndex);
     void selectAll();
     void xywhTick();
+    void showContextMenu(const QPoint& pos);
 
 public:
     void removeToolObject(int index = -1);
@@ -112,6 +113,10 @@ protected:
     void changeEvent(QEvent* changeEvent) override;
 
 private:
+    void drawPinMode(QPainter& painter);
+    void goToPinMode();
+    void copyToClipboard();
+    void restoreFromPinMode();
     void pushObjectsStateToUndoStack();
     void releaseActiveTool();
     void uncheckActiveTool();

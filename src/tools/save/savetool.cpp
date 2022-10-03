@@ -44,5 +44,5 @@ void SaveTool::pressed(CaptureContext& context)
     emit requestAction(REQ_CLEAR_SELECTION);
     context.request.addSaveTask();
     emit requestAction(REQ_CAPTURE_DONE_OK);
-    emit requestAction(REQ_CLOSE_GUI);
+    //emit requestAction(REQ_CLOSE_GUI);
 }

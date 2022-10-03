@@ -77,7 +77,9 @@ public:
         // decrease tool size for all tools
         REQ_DECREASE_TOOL_SIZE,
         // decrease tool size for pin
-        REQ_PIN_EDITABLE
+        REQ_PIN_EDITABLE,
+        // Request copy to clipboard
+        REQ_CAPTURE_TO_CLIPBOARD,
     };
 
     explicit CaptureTool(QObject* parent = nullptr)

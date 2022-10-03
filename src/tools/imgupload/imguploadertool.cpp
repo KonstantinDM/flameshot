@@ -43,5 +43,5 @@ void ImgUploaderTool::pressed(CaptureContext& context)
     emit requestAction(REQ_CLEAR_SELECTION);
     emit requestAction(REQ_CAPTURE_DONE_OK);
     context.request.addTask(CaptureRequest::UPLOAD);
-    emit requestAction(REQ_CLOSE_GUI);
+    //emit requestAction(REQ_CLOSE_GUI);
 }

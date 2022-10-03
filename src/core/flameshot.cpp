@@ -315,6 +315,11 @@ void Flameshot::requestCapture(const CaptureRequest& request)
     }
 }
 
+void Flameshot::exportCaptureToClipboard(QPixmap capture)
+{
+    FlameshotDaemon::copyToClipboard(capture);
+}
+
 void Flameshot::exportCapture(QPixmap capture,
                               QRect& selection,
                               const CaptureRequest& req)

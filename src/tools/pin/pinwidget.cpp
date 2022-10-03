@@ -280,6 +280,7 @@ void PinWidget::copyToClipboard()
 {
     saveToClipboard(m_pixmap);
 }
+
 void PinWidget::saveToFile()
 {
     hide();

@@ -39,6 +39,9 @@
 #include <QScreen>
 #include <QShortcut>
 #include <draggablewidgetmaker.h>
+#include <QMenu>
+#include <QVBoxLayout>
+#include <QWheelEvent>
 
 #if !defined(DISABLE_UPDATE_CHECKER)
 #include "src/widgets/updatenotificationwidget.h"
@@ -266,16 +269,19 @@ CaptureWidget::~CaptureWidget()
         }
     }
 #endif
-    if (m_captureDone) {
-        auto lastRegion = m_selection->geometry();
-        setLastRegion(lastRegion);
+    /*if (m_captureDone) {
+        if (m_selection) {
+            setLastRegion(m_selection->geometry());
+        } else if (m_pinModeEnabled) {
+            setLastRegion(geometry());
+        }
         QRect geometry(m_context.selection);
         geometry.setTopLeft(geometry.topLeft() + m_context.widgetOffset);
         Flameshot::instance()->exportCapture(
           pixmap(), geometry, m_context.request);
     } else {
         emit Flameshot::instance()->captureFailed();
-    }
+    }*/
 }
 
 void CaptureWidget::initButtons()
@@ -350,12 +356,65 @@ void CaptureWidget::initButtons()
                         &CaptureToolButton::pressedButtonRightClick,
                         this,
                         &CaptureWidget::handleButtonRightClick);
+                this->setContextMenuPolicy(Qt::CustomContextMenu);
             }
 
             vectorButtons << b;
         }
     }
     m_buttonHandler->setButtons(vectorButtons);
+}
+
+void CaptureWidget::copyToClipboard()
+{
+    QRect geometry(m_context.selection);
+    geometry.setTopLeft(geometry.topLeft() + m_context.widgetOffset);
+    Flameshot::instance()->exportCaptureToClipboard(pixmap());
+}
+
+void CaptureWidget::showContextMenu(const QPoint& pos)
+{
+    QMenu contextMenu(tr("Context menu"), this);
+
+    QAction returnToEditMode(tr("Return to edit"), this);
+    connect(&returnToEditMode,
+            &QAction::triggered,
+            this,
+            &CaptureWidget::restoreFromPinMode);
+
+    contextMenu.addAction(&returnToEditMode);
+
+    QAction copyToClipboardAction(tr("Copy to clipboard"), this);
+    connect(&copyToClipboardAction,
+            &QAction::triggered,
+            this,
+            &CaptureWidget::copyToClipboard);
+    contextMenu.addAction(&copyToClipboardAction);
+
+    /*QAction saveToFileAction(tr("Save to file"), this);
+    connect(
+      &saveToFileAction, &QAction::triggered, this, &PinWidget::saveToFile);
+    contextMenu.addAction(&saveToFileAction);
+
+    contextMenu.addSeparator();
+
+    QAction rotateRightAction(tr("Rotate Right"), this);
+    connect(
+      &rotateRightAction, &QAction::triggered, this, &PinWidget::rotateRight);
+    contextMenu.addAction(&rotateRightAction);
+
+    QAction rotateLeftAction(tr("Rotate Left"), this);
+    connect(
+      &rotateLeftAction, &QAction::triggered, this, &PinWidget::rotateLeft);
+    contextMenu.addAction(&rotateLeftAction);
+
+    QAction closePinAction(tr("Close"), this);
+    connect(&closePinAction, &QAction::triggered, this, &PinWidget::closePin);
+    contextMenu.addSeparator();
+    contextMenu.addAction(&closePinAction);
+
+    */
+   contextMenu.exec(mapToGlobal(pos));
 }
 
 void CaptureWidget::handleButtonRightClick(CaptureToolButton* b)
@@ -538,10 +597,7 @@ void CaptureWidget::paintEvent(QPaintEvent* paintEvent)
         save = true;
     }
     if (m_pinModeEnabled) {
-        painter.drawPixmap(-m_pinRect.x(), -m_pinRect.y(), m_context.screenshot);
-        ConfigHandler conf;
-        painter.setPen(conf.uiColor());
-        painter.drawRect(0,0,rect().width()-1,rect().height()-1);
+        drawPinMode(painter);
         return;
     } else {
         painter.drawPixmap(0, 0, m_context.screenshot);
@@ -798,7 +854,7 @@ void CaptureWidget::mouseDoubleClickEvent(QMouseEvent* event)
             handleToolSignal(CaptureTool::REQ_ADD_CHILD_WIDGET);
             m_panel->setToolWidget(m_activeTool->configurationWidget());
         }
-    } else if (m_selection->geometry().contains(event->pos())) {
+    } else if (m_selection && m_selection->geometry().contains(event->pos())) {
         if ((event->button() == Qt::LeftButton) &&
             (m_config.copyOnDoubleClick())) {
             CopyTool copyTool;
@@ -895,7 +951,7 @@ void CaptureWidget::mouseMoveEvent(QMouseEvent* e)
               m_buttonHandler->contains(m_context.mousePos);
             if (containsMouse) {
                 m_buttonHandler->hide();
-            } else if (m_selection->isVisible()) {
+            } else if (m_selection && m_selection->isVisible()) {
                 m_buttonHandler->show();
             }
         }
@@ -903,21 +959,63 @@ void CaptureWidget::mouseMoveEvent(QMouseEvent* e)
     updateCursor();
 }
 
+void CaptureWidget::drawPinMode(QPainter& painter)
+{
+    painter.drawPixmap(-m_pinRect.x(), -m_pinRect.y(), m_context.screenshot);
+    ConfigHandler conf;
+    painter.setPen(conf.uiColor());
+    painter.drawRect(0,0,rect().width()-1,rect().height()-1);
+}
+
+void CaptureWidget::goToPinMode()
+{
+    if (m_panel) {
+        m_panel->hide();
+    }
+    if (m_toolButton) {
+        m_toolButton->hide();
+    }
+    if (m_magnifier) {
+        m_magnifier->hide();
+    }
+    m_pinReturnGeometry = geometry();
+    setGeometry(m_selection->geometry());
+    m_pinRect = m_selection->geometry();
+    m_pinModeEnabled = true;
+    setCursor(Qt::ArrowCursor);
+    delete m_selection;
+    m_selection = nullptr;
+    connect(this,
+            &QWidget::customContextMenuRequested,
+            this,
+            &CaptureWidget::showContextMenu);
+}
+
+void CaptureWidget::restoreFromPinMode()
+{
+    m_buttonHandler->hide();
+    m_pinModeEnabled = false;
+    setGeometry(m_pinReturnGeometry);
+    m_context.request.setInitialSelection(m_pinRect);
+    initSelection();
+    if (m_toolButton) {
+        m_toolButton->show();
+    }
+    if (m_magnifier) {
+        m_magnifier->show();
+        m_magnifier->update();
+    }
+    disconnect(this,
+               &QWidget::customContextMenuRequested,
+               this,
+               &CaptureWidget::showContextMenu);
+}
+
 void CaptureWidget::mouseReleaseEvent(QMouseEvent* e)
 {
     if (m_pinModeEnabled) {
-        m_pinDrag = false;
         m_buttonHandler->hide();
-        if (e->button() == Qt::RightButton) {
-            m_pinModeEnabled = false;
-            setGeometry(m_pinReturnGeometry);
-            m_context.request.setInitialSelection(m_pinRect);
-            initSelection();
-            if (m_toolButton) {
-                m_toolButton->show();
-            }
-            return;
-        }
+        m_pinDrag = false;
         return;
     }
     if (e->button() == Qt::LeftButton && m_colorPicker->isVisible()) {
@@ -994,7 +1092,7 @@ void CaptureWidget::keyPressEvent(QKeyEvent* e)
         m_toolSizeByKeyboard = 0;
     }
 
-    if (!m_pinModeEnabled && !m_selection->isVisible()) {
+    if (!m_pinModeEnabled && m_selection && !m_selection->isVisible()) {
         return;
     } else if (e->key() == Qt::Key_Control) {
         m_adjustmentButtonPressed = true;
@@ -1255,6 +1353,9 @@ void CaptureWidget::initSelection()
     m_selection = new SelectionWidget(m_uiColor, this);
     QRect initialSelection = m_context.request.initialSelection();
     connect(m_selection, &SelectionWidget::geometryChanged, this, [this]() {
+        if (!m_selection) {
+            return;
+        }
         QRect constrainedToCaptureArea =
           m_selection->geometry().intersected(rect());
         m_context.selection = extendedRect(constrainedToCaptureArea);
@@ -1264,7 +1365,7 @@ void CaptureWidget::initSelection()
         m_overlayMessage.pop();
     });
     connect(m_selection, &SelectionWidget::geometrySettled, this, [this]() {
-        if (m_selection->isVisibleTo(this)) {
+        if (m_selection && m_selection->isVisibleTo(this)) {
             auto& req = m_context.request;
             if (req.tasks() & CaptureRequest::ACCEPT_ON_SELECT) {
                 req.removeTask(CaptureRequest::ACCEPT_ON_SELECT);
@@ -1278,7 +1379,7 @@ void CaptureWidget::initSelection()
         }
     });
     connect(m_selection, &SelectionWidget::visibilityChanged, this, [this]() {
-        if (!m_selection->isVisible() && !m_helpMessage.isEmpty()) {
+        if (m_selection && !m_selection->isVisible() && !m_helpMessage.isEmpty()) {
             m_overlayMessage.push(m_helpMessage);
         }
     });
@@ -1368,18 +1469,7 @@ void CaptureWidget::handleToolSignal(CaptureTool::Request r)
             m_captureDone = true;
             break;
         case CaptureTool::REQ_PIN_EDITABLE:
-            {
-                m_pinReturnGeometry = geometry();
-                setGeometry(m_selection->geometry());
-                m_pinRect = m_selection->geometry();
-                m_pinModeEnabled = true;
-                setCursor(Qt::ArrowCursor);
-                delete m_selection;
-                m_selection = nullptr;
-                if (m_toolButton) {
-                    m_toolButton->hide();
-                }
-            }
+            goToPinMode();
             break;
         case CaptureTool::REQ_CLEAR_SELECTION:
             if (m_panel->activeLayerIndex() >= 0) {
@@ -1420,6 +1510,9 @@ void CaptureWidget::handleToolSignal(CaptureTool::Request r)
             break;
         case CaptureTool::REQ_DECREASE_TOOL_SIZE:
             setToolSize(m_context.toolSize - 1);
+            break;
+        case CaptureTool::REQ_CAPTURE_TO_CLIPBOARD:
+            copyToClipboard();
             break;
         default:
             break;
@@ -1533,6 +1626,9 @@ void CaptureWidget::onMoveCaptureToolDown(int captureToolIndex)
 
 void CaptureWidget::selectAll()
 {
+    if (!m_selection) {
+        return;
+    }
     m_selection->show();
     m_selection->setGeometry(rect());
     emit m_selection->geometrySettled();
